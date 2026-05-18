@@ -1,6 +1,11 @@
 # AuthGoogle - Proyecto de Practica de Autenticacion con Google
 
-Este proyecto es una aplicacion de practica diseñada para analizar y comprender el funcionamiento de la autenticacion de Google (OAuth2) en un entorno de desarrollo web utilizando .NET 10 y Clean Architecture para el backend, y un frontend liviano construido con HTML, CSS y Javascript vanilla.
+> [!IMPORTANT]
+> **CONFIGURACION DE CREDENCIALES DE GOOGLE (LEER ANTES DE EJECUTAR):**
+> Este proyecto contiene marcadores de posicion para las credenciales de Google OAuth en `Api/Program.cs` para evitar la exposicion de llaves de seguridad en repositorios publicos.
+> Antes de ejecutar la aplicacion localmente, debe reemplazar los siguientes valores en `Api/Program.cs` (lineas 42 y 43) con sus propias credenciales obtenidas desde la consola de Google Cloud:
+> - `options.ClientId = "PONER_AQUI_EL_CLIENT_ID";`
+> - `options.ClientSecret = "PONER_AQUI_EL_CLIENT_SECRET";`
 
 ## Descripcion General del Proyecto
 
