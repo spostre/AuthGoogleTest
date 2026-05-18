@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Notes - Auth Práctica</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome para iconos premium -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Elementos decorativos de fondo -->
+    <div class="bg-glow circle-1"></div>
+    <div class="bg-glow circle-2"></div>
+
+    <div class="app-container">
+        <!-- Encabezado -->
+        <header>
+            <div class="logo">
+                <i class="fa-brands fa-google brand-logo"></i>
+                <span class="logo-text">Google<span class="accent-text">Notes</span></span>
+            </div>
+            <div id="auth-header-action">
+                <!-- Botón dinámico de Login / Logout -->
+                <button class="btn btn-primary" id="btn-login-google">
+                    <i class="fa-brands fa-google"></i> Iniciar Sesión
+                </button>
+            </div>
+        </header>
+
+        <!-- Contenido Principal -->
+        <main>
+            <!-- Tarjeta de Información de Usuario (se muestra al iniciar sesión) -->
+            <section id="user-info-section" class="user-card hidden">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <h3 id="user-name">Usuario Invitado</h3>
+                    <p id="user-email">invitado@email.com</p>
+                </div>
+            </section>
+
+            <!-- Aviso de Estado / Registro Requerido -->
+            <section id="status-notice-section" class="notice-card">
+                <div class="notice-icon">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h2>Acceso Restringido</h2>
+                <p id="status-message">No se pueden crear ni ver notas sin iniciar sesión con Google y registrarse primero.</p>
+                <div id="status-actions" class="mt-4">
+                    <!-- Botón dinámico para Iniciar Sesión / Registrarse -->
+                </div>
+            </section>
+
+            <!-- Sección de Notas (Visible cuando el usuario está registrado) -->
+            <section id="notes-section" class="hidden">
+                <div class="notes-header">
+                    <h2>Mis Notas</h2>
+                    <button class="btn btn-accent" id="btn-show-create-modal">
+                        <i class="fa-solid fa-plus"></i> Nueva Nota
+                    </button>
+                </div>
+
+                <!-- Cuadrícula de Notas -->
+                <div class="notes-grid" id="notes-grid">
+                    <!-- Las notas se inyectarán aquí dinámicamente -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para Crear Nota -->
+    <div class="modal-overlay hidden" id="note-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Crear Nueva Nota</h3>
+                <button class="btn-close" id="btn-close-modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="note-form">
+                <div class="form-group">
+                    <label for="note-title">Título de la Nota</label>
+                    <input type="text" id="note-title" placeholder="Ej. Compras de la semana" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="note-content">Contenido</label>
+                    <textarea id="note-content" rows="6" placeholder="Escribe el contenido de tu nota aquí..." required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-accent">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Nota
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

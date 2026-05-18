@@ -1,0 +1,15 @@
+# .NET Build Outputs
+bin/
+obj/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local configurations / secrets
+appsettings.local.json
+appsettings.Development.json
