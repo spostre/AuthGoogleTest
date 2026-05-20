@@ -1,8 +1,11 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
+using System.Text;
+using Api.Services;
+using Application;
 using Infrastructure;
 using Infrastructure.Data;
-using Application;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var clientPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "Client"));
 
@@ -30,17 +33,33 @@ builder.Services.AddOpenApi();
 // Registrar las capas de aplicación e infraestructura
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSingleton<JwtTokenService>();
 
-builder.Services.AddAuthentication(options => 
-{ 
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme; 
-    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme; 
-}) 
-.AddCookie() 
-.AddGoogle(options => 
-{ 
-    options.ClientId = "PONER_AQUI_EL_CLIENT_ID"; 
-    options.ClientSecret = "PONER_AQUI_EL_CLIENT_SECRET"; 
+var jwtKey = builder.Configuration["Jwt:Key"]!;
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+})
+.AddGoogle(options =>
+{
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
+    options.SignInScheme = null;
 });
 
 var app = builder.Build();

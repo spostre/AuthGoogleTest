@@ -1,10 +1,9 @@
+using Api.Services;
 using Application.Services;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -15,17 +14,17 @@ namespace Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly JwtTokenService _jwtTokenService;
 
-        public AuthController(IUserService userService)
+        public AuthController(IUserService userService, JwtTokenService jwtTokenService)
         {
             _userService = userService;
+            _jwtTokenService = jwtTokenService;
         }
 
         [HttpGet("login")]
         public IActionResult Login()
         {
-            // Iniciamos el desafío de autenticación indicando que queremos usar Google
-            // Redirigimos a GoogleResponse cuando el usuario termine de autenticarse
             var properties = new AuthenticationProperties { RedirectUri = Url.Action("GoogleResponse") };
             return Challenge(properties, GoogleDefaults.AuthenticationScheme);
         }
@@ -33,37 +32,38 @@ namespace Api.Controllers
         [HttpGet("google-response")]
         public async Task<IActionResult> GoogleResponse()
         {
-            // Recibimos los datos del usuario desde la cookie que generó la autenticación
-            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            
+            var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
+
             if (!result.Succeeded || result.Principal == null)
             {
                 return Redirect("/?error=auth_failed");
             }
-                
+
             var googleId = result.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(googleId))
             {
                 return Redirect("/?error=no_google_id");
             }
 
-            // Redirigimos de vuelta al frontend (raíz del sitio)
-            return Redirect("/");
+            var nombre = result.Principal.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
+            var email = result.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+
+            var token = _jwtTokenService.GenerateToken(googleId, nombre, email);
+
+            return Redirect($"/#token={token}");
         }
 
         [HttpGet("current-user")]
         public async Task<IActionResult> GetCurrentUser()
         {
-            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            
-            if (!result.Succeeded || result.Principal == null)
+            if (User.Identity?.IsAuthenticated != true)
             {
                 return Ok(new { IsAuthenticated = false });
             }
 
-            var googleId = result.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
-            var nombre = result.Principal.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
-            var email = result.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+            var googleId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var nombre = User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
+            var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
 
             if (string.IsNullOrEmpty(googleId))
             {
@@ -72,7 +72,7 @@ namespace Api.Controllers
 
             var usuarioExistente = await _userService.GetByGoogleIdAsync(googleId);
 
-            return Ok(new 
+            return Ok(new
             {
                 IsAuthenticated = true,
                 IsRegistered = usuarioExistente != null,
@@ -101,11 +101,10 @@ namespace Api.Controllers
             return Ok(usuario);
         }
 
-        [HttpGet("logout")]
-        public async Task<IActionResult> Logout()
+        [HttpPost("logout")]
+        public IActionResult Logout()
         {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return Redirect("/");
+            return Ok(new { Message = "Sesión cerrada. Elimina el token del cliente." });
         }
     }
 

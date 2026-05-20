@@ -1,14 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // Estado
+    const TOKEN_KEY = "authToken";
+
     let currentUser = null;
 
-    // Elementos del DOM
     const authHeaderAction = document.getElementById("auth-header-action");
     const userInfoSection = document.getElementById("user-info-section");
     const userName = document.getElementById("user-name");
     const userEmail = document.getElementById("user-email");
     const userAvatar = document.getElementById("user-avatar");
-    
+
     const statusNoticeSection = document.getElementById("status-notice-section");
     const statusMessage = document.getElementById("status-message");
     const statusActions = document.getElementById("status-actions");
@@ -24,16 +24,50 @@ document.addEventListener("DOMContentLoaded", () => {
     const noteTitle = document.getElementById("note-title");
     const noteContent = document.getElementById("note-content");
 
-    // Inicializar
+    captureTokenFromUrl();
     checkSession();
 
-    // Comprobar la sesión activa al arrancar
-    async function checkSession() {
-        try {
-            const response = await fetch("/api/auth/current-user");
-            const data = await response.json();
-            currentUser = data;
+    function captureTokenFromUrl() {
+        const hash = window.location.hash;
+        if (hash.startsWith("#token=")) {
+            const token = hash.substring(7);
+            localStorage.setItem(TOKEN_KEY, token);
+            window.history.replaceState(null, "", window.location.pathname);
+        }
+    }
 
+    function getAuthHeaders() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) return {};
+        return { Authorization: `Bearer ${token}` };
+    }
+
+    function authFetch(url, options = {}) {
+        return fetch(url, {
+            ...options,
+            headers: {
+                ...getAuthHeaders(),
+                ...(options.headers || {})
+            }
+        });
+    }
+
+    async function checkSession() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+            showGuestUI();
+            return;
+        }
+
+        try {
+            const response = await authFetch("/api/auth/current-user");
+            if (response.status === 401) {
+                localStorage.removeItem(TOKEN_KEY);
+                showGuestUI();
+                return;
+            }
+
+            currentUser = await response.json();
             updateUI();
         } catch (error) {
             console.error("Error al obtener la sesión:", error);
@@ -41,25 +75,23 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Actualizar la interfaz de usuario en base al estado del usuario
     function updateUI() {
         if (!currentUser || !currentUser.isAuthenticated) {
             showGuestUI();
             return;
         }
 
-        // Mostrar tarjeta de detalles del usuario
         userInfoSection.classList.remove("hidden");
         userName.textContent = currentUser.nombre || "Usuario Google";
         userEmail.textContent = currentUser.email || "";
         userAvatar.textContent = (currentUser.nombre || "G").charAt(0).toUpperCase();
 
-        // Cambiar botón del encabezado por Cerrar Sesión
         authHeaderAction.innerHTML = `
-            <a href="/api/auth/logout" class="btn btn-danger">
+            <button class="btn btn-danger" id="btn-logout">
                 <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
-            </a>
+            </button>
         `;
+        document.getElementById("btn-logout").addEventListener("click", logout);
 
         if (!currentUser.isRegistered) {
             showUnregisteredUI();
@@ -68,14 +100,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Mostrar UI para usuarios que no han iniciado sesión
+    async function logout() {
+        try {
+            await authFetch("/api/auth/logout", { method: "POST" });
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+        } finally {
+            localStorage.removeItem(TOKEN_KEY);
+            currentUser = null;
+            showGuestUI();
+        }
+    }
+
     function showGuestUI() {
         userInfoSection.classList.add("hidden");
         notesSection.classList.add("hidden");
-        
+
         statusNoticeSection.classList.remove("hidden");
-        statusMessage.textContent = "No se pueden crear ni ver notas sin iniciar sesión con Google y registrarse primero.";
-        
+        statusMessage.textContent = "Inicia sesión con Google para acceder a tus notas. Si es tu primera vez, podrás registrarte después de autenticarte.";
+
         authHeaderAction.innerHTML = `
             <a href="/api/auth/login" class="btn btn-primary">
                 <i class="fa-brands fa-google"></i> Iniciar Sesión con Google
@@ -84,34 +127,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
         statusActions.innerHTML = `
             <a href="/api/auth/login" class="btn btn-primary btn-lg">
-                <i class="fa-brands fa-google"></i> Iniciar Sesión para comenzar
+                <i class="fa-brands fa-google"></i> Iniciar Sesión con Google
             </a>
         `;
     }
 
-    // Mostrar UI para usuarios autenticados pero no registrados en la BD local
     function showUnregisteredUI() {
         notesSection.classList.add("hidden");
         statusNoticeSection.classList.remove("hidden");
-        statusMessage.innerHTML = `Hola <strong>${currentUser.nombre}</strong>. Has iniciado sesión con Google con éxito, pero aún no estás registrado en nuestra base de datos local de notas.`;
-        
+        statusMessage.innerHTML = `Hola <strong>${currentUser.nombre}</strong>. Has iniciado sesión con Google, pero aún no estás registrado en nuestra base de datos local de notas.`;
+
         statusActions.innerHTML = `
             <button class="btn btn-accent btn-lg" id="btn-register-local">
-                <i class="fa-solid fa-user-plus"></i> Registrar mi cuenta ahora
+                <i class="fa-solid fa-user-plus"></i> Registrar mi cuenta con Google
             </button>
         `;
 
         document.getElementById("btn-register-local").addEventListener("click", registerUser);
     }
 
-    // Registrar al usuario en la base de datos
     async function registerUser() {
         const btn = document.getElementById("btn-register-local");
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Registrando...`;
 
         try {
-            const response = await fetch("/api/auth/register", {
+            const response = await authFetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -122,29 +163,26 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (response.ok) {
-                // Registrado correctamente, actualizar sesión
                 await checkSession();
             } else {
                 alert("Error al registrar el usuario en el backend.");
                 btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> Registrar mi cuenta ahora`;
+                btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> Registrar mi cuenta con Google`;
             }
         } catch (error) {
             console.error("Error al registrar usuario:", error);
             alert("Ocurrió un error al conectar con la API.");
             btn.disabled = false;
-            btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> Registrar mi cuenta ahora`;
+            btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> Registrar mi cuenta con Google`;
         }
     }
 
-    // Mostrar UI para usuarios autenticados y registrados
     function showRegisteredUI() {
         statusNoticeSection.classList.add("hidden");
         notesSection.classList.remove("hidden");
         loadNotes();
     }
 
-    // Cargar las notas del usuario desde la API
     async function loadNotes() {
         notesGrid.innerHTML = `
             <div class="notice-card" style="grid-column: 1/-1; padding: 2rem; border: none; background: transparent;">
@@ -154,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         try {
-            const response = await fetch(`/api/notes/${currentUser.googleId}`);
+            const response = await authFetch(`/api/notes/${currentUser.googleId}`);
             if (!response.ok) throw new Error("No se pudieron cargar las notas.");
 
             const notes = await response.json();
@@ -170,7 +208,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Renderizar las notas en pantalla
     function renderNotes(notes) {
         notesGrid.innerHTML = "";
 
@@ -201,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="note-header-card">
                         <h3>${escapeHTML(note.titulo)}</h3>
                     </div>
-                    <p class="note-body-card">${escapeHTML(note.contenido).replace(/\n/g, '<br>')}</p>
+                    <p class="note-body-card">${escapeHTML(note.contenido).replace(/\n/g, "<br>")}</p>
                 </div>
                 <div class="note-footer-card">
                     <span class="note-date">
@@ -213,7 +250,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Modal Control
     btnShowCreateModal.addEventListener("click", () => {
         noteModal.classList.remove("hidden");
         noteTitle.focus();
@@ -226,19 +262,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnCloseModal.addEventListener("click", hideModal);
     btnCancelModal.addEventListener("click", hideModal);
-    
-    // Cerrar modal al hacer clic en el fondo oscuro
+
     noteModal.addEventListener("click", (e) => {
         if (e.target === noteModal) hideModal();
     });
 
-    // Enviar formulario para crear nota
     noteForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const titleVal = noteTitle.value.trim();
         const contentVal = noteContent.value.trim();
-
         if (!titleVal || !contentVal) return;
 
         const submitBtn = noteForm.querySelector("button[type='submit']");
@@ -247,7 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
 
         try {
-            const response = await fetch("/api/notes", {
+            const response = await authFetch("/api/notes", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -259,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (response.ok) {
                 hideModal();
-                await loadNotes(); // Recargar la lista de notas
+                await loadNotes();
             } else {
                 alert("Error al guardar la nota en el servidor.");
             }
@@ -272,15 +305,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Función auxiliar para evitar inyección de código (XSS)
     function escapeHTML(str) {
-        return str.replace(/[&<>'"]/g, 
+        return str.replace(/[&<>'"]/g,
             tag => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                "'": '&#39;',
-                '"': '&quot;'
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                "'": "&#39;",
+                '"': "&quot;"
             }[tag] || tag)
         );
     }
