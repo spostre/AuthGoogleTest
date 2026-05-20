@@ -1,3 +1,4 @@
+using Api.Auth;
 using Api.Services;
 using Application.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -32,7 +33,7 @@ namespace Api.Controllers
         [HttpGet("google-response")]
         public async Task<IActionResult> GoogleResponse()
         {
-            var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
+            var result = await HttpContext.AuthenticateAsync(AuthSchemes.External);
 
             if (!result.Succeeded || result.Principal == null)
             {
@@ -49,6 +50,8 @@ namespace Api.Controllers
             var email = result.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
 
             var token = _jwtTokenService.GenerateToken(googleId, nombre, email);
+
+            await HttpContext.SignOutAsync(AuthSchemes.External);
 
             return Redirect($"/#token={token}");
         }

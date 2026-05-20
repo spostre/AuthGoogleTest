@@ -1,11 +1,19 @@
 # AuthGoogle - Proyecto de Practica de Autenticacion con Google
 
 > [!IMPORTANT]
-> **CONFIGURACION DE CREDENCIALES DE GOOGLE (LEER ANTES DE EJECUTAR):**
-> Este proyecto contiene marcadores de posicion para las credenciales de Google OAuth en `Api/Program.cs` para evitar la exposicion de llaves de seguridad en repositorios publicos.
-> Antes de ejecutar la aplicacion localmente, debe reemplazar los siguientes valores en `Api/Program.cs` (lineas 42 y 43) con sus propias credenciales obtenidas desde la consola de Google Cloud:
-> - `options.ClientId = "PONER_AQUI_EL_CLIENT_ID";`
-> - `options.ClientSecret = "PONER_AQUI_EL_CLIENT_SECRET";`
+> **CONFIGURACION DE SECRETOS (LEER ANTES DE EJECUTAR):**
+> No coloques credenciales en el codigo fuente. Copia `Api/appsettings.Development.example.json` a `Api/appsettings.Development.json` (este archivo esta en `.gitignore`) y completa:
+> - `Authentication:Google:ClientId` y `ClientSecret` (Google Cloud Console)
+> - `Jwt:Key` (minimo 32 caracteres)
+> - `ConnectionStrings:DefaultConnection` (incluye la contraseña de PostgreSQL)
+>
+> Tambien puedes usar variables de entorno, por ejemplo:
+> - `Authentication__Google__ClientId`
+> - `Authentication__Google__ClientSecret`
+> - `Jwt__Key`
+> - `ConnectionStrings__DefaultConnection`
+>
+> Si alguna credencial llego a subirse al repositorio, **regenerala de inmediato** en Google Cloud y en PostgreSQL.
 
 ## Descripcion General del Proyecto
 
@@ -56,6 +64,6 @@ Para evitar que un usuario autenticado altere los datos del cliente para leer o 
 
 1. Tener instalado .NET 10 SDK.
 2. Contar con un servidor local de PostgreSQL activo y configurar la cadena de conexion en `appsettings.Development.json`.
-3. Disponer de credenciales OAuth de Google (Client ID y Client Secret) configuradas en `Program.cs`.
+3. Disponer de credenciales OAuth de Google configuradas en `appsettings.Development.json` (ver plantilla `appsettings.Development.example.json`).
 4. Ejecutar el comando `dotnet run` dentro de la carpeta `Api/`.
 5. Acceder en el navegador a `http://localhost:5098`.
