@@ -70,33 +70,22 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-}
-
-/* Header Styles */
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 2.5rem;
+    justify-content: center; 
+    align-items: center;     
 }
 
 .logo {
-    display: flex;
+    display: flex;         
+    justify-content: center; 
     align-items: center;
     gap: 0.75rem;
+    text-align: center;     
+    margin-bottom: 1.5rem;  
 }
 
-.brand-logo {
-    font-size: 2rem;
-    background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
 
 .logo-text {
-    font-size: 1.6rem;
+    font-size: 3.6rem;
     font-weight: 700;
     letter-spacing: -0.05rem;
 }
@@ -219,8 +208,9 @@ header {
     border-radius: 1.5rem;
     padding: 3.5rem 2rem;
     backdrop-filter: var(--glass-blur);
+    width: 100%;            
     max-width: 600px;
-    margin: 3rem auto;
+    margin: 0 auto;         
     animation: fadeIn 0.5s ease-out;
 }
 
@@ -311,6 +301,77 @@ header {
     word-break: break-word;
 }
 
+/* Línea divisoria "o continúa con" */
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 2rem 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.divider:not(:empty)::before {
+    margin-right: .75rem;
+}
+
+.divider:not(:empty)::after {
+    margin-left: .75rem;
+}
+
+/* Cuadrícula para los botones secundarios */
+.oauth-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+/* Estilo individual para los botones de proveedores (Estilo Notion Dark) */
+.btn-provider {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.8rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    flex-direction: row; 
+    gap: 0.5rem;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-provider:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-provider i {
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+/* Texto de términos al pie de la tarjeta */
+.terms-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.terms-text a {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
 .note-footer-card {
     display: flex;
     justify-content: space-between;

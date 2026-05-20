@@ -18,19 +18,18 @@
     <div class="bg-glow circle-2"></div>
 
     <div class="app-container">
-        <!-- Encabezado -->
         <header>
+
             <div class="logo">
-                <i class="fa-brands fa-google brand-logo"></i>
+                
                 <span class="logo-text">Google<span class="accent-text">Notes</span></span>
+            
             </div>
-            <div id="auth-header-action">
-                <!-- Botón dinámico de Login / Logout -->
-                <button class="btn btn-primary" id="btn-login-google">
-                    <i class="fa-brands fa-google"></i> Iniciar Sesión
-                </button>
-            </div>
+            
+            <div id="auth-header-action"></div>
         </header>
+
+        <main>
 
         <!-- Contenido Principal -->
         <main>
@@ -45,15 +44,38 @@
 
             <!-- Aviso de Estado / Registro Requerido -->
             <section id="status-notice-section" class="notice-card">
-                <div class="notice-icon">
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-                <h2>Acceso Restringido</h2>
-                <p id="status-message">Inicia sesión con Google para acceder a tus notas. Si es tu primera vez, podrás registrarte después de autenticarte.</p>
-                <div id="status-actions" class="mt-4">
-                    <!-- Botón dinámico para Iniciar Sesión / Registrarse -->
-                </div>
-            </section>
+    <div class="notice-icon">
+        <i class="fa-solid fa-lock"></i>
+    </div>
+    <h2>Acceso Restringido</h2>
+    <p id="status-message">Inicia sesión con Google para acceder a tus notas. Si es tu primera vez, podrás registrarte después de autenticarte.</p>
+    
+    <div id="status-actions" class="mt-4">
+        </div>
+
+    <div class="divider">
+        <span>o continúa con</span>
+    </div>
+
+    <div class="oauth-grid">
+        <button class="btn btn-provider">
+            <i class="fa-brands fa-apple"></i> Apple
+        </button>
+        <button class="btn btn-provider">
+            <i class="fa-brands fa-microsoft"></i> Microsoft
+        </button>
+        <button class="btn btn-provider">
+            <i class="fa-solid fa-key"></i> Passkey
+        </button>
+        <button class="btn btn-provider">
+            <i class="fa-solid fa-building"></i> SSO
+        </button>
+    </div>
+
+    <p class="terms-text">
+        Al continuar, confirmas que entiendes y aceptas los <a href="#">Términos y condiciones</a> y la <a href="#">Política de privacidad</a>.
+    </p>
+</section>
 
             <!-- Sección de Notas (Visible cuando el usuario está registrado) -->
             <section id="notes-section" class="hidden">

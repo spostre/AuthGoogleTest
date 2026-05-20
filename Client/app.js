@@ -119,11 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
         statusNoticeSection.classList.remove("hidden");
         statusMessage.textContent = "Inicia sesión con Google para acceder a tus notas. Si es tu primera vez, podrás registrarte después de autenticarte.";
 
-        authHeaderAction.innerHTML = `
-            <a href="/api/auth/login" class="btn btn-primary">
-                <i class="fa-brands fa-google"></i> Iniciar Sesión con Google
-            </a>
-        `;
+        authHeaderAction.innerHTML = ``;
 
         statusActions.innerHTML = `
             <a href="/api/auth/login" class="btn btn-primary btn-lg">
