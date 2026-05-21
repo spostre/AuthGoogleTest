@@ -237,6 +237,14 @@ static async Task NormalizeExistingUserEmailsAsync(AppDbContext context, ILogger
 
     foreach (var user in users)
     {
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            logger.LogWarning(
+                "Usuario Id={UserId} tiene correo nulo o vacío; se omite la normalización.",
+                user.Id);
+            continue;
+        }
+
         var normalized = user.Email.Trim().ToLowerInvariant();
         if (user.Email == normalized)
         {
