@@ -13,7 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusNoticeSection = document.getElementById("status-notice-section");
     const statusMessage = document.getElementById("status-message");
     const statusActions = document.getElementById("status-actions");
-    const guestExtras = document.getElementById("guest-extras");
     const notesSection = document.getElementById("notes-section");
     const notesWelcome = document.getElementById("notes-welcome");
     const notesGrid = document.getElementById("notes-grid");
@@ -29,13 +28,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let editingNoteId = null;
 
+    const comingSoonModal = document.getElementById("coming-soon-modal");
+    const btnCloseComingSoon = document.getElementById("btn-close-coming-soon");
+    const btnComingSoonOk = document.getElementById("btn-coming-soon-ok");
+
     captureTokenFromUrl();
     checkSession();
     bindProviderButtons();
+    bindComingSoonModal();
+
+    function showComingSoonModal() {
+        comingSoonModal?.classList.remove("hidden");
+    }
+
+    function hideComingSoonModal() {
+        comingSoonModal?.classList.add("hidden");
+    }
+
+    function bindComingSoonModal() {
+        btnCloseComingSoon?.addEventListener("click", hideComingSoonModal);
+        btnComingSoonOk?.addEventListener("click", hideComingSoonModal);
+        comingSoonModal?.addEventListener("click", (e) => {
+            if (e.target === comingSoonModal) hideComingSoonModal();
+        });
+    }
 
     function bindProviderButtons() {
-        document.querySelectorAll(".btn-provider").forEach(btn => {
-            btn.addEventListener("click", () => {});
+        document.querySelectorAll("[data-provider]").forEach(btn => {
+            if (btn.dataset.provider === "google") {
+                return;
+            }
+
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                showComingSoonModal();
+            });
         });
     }
 
@@ -170,10 +197,9 @@ document.addEventListener("DOMContentLoaded", () => {
         userInfoSection.classList.add("hidden");
         notesSection.classList.add("hidden");
         statusNoticeSection.classList.remove("hidden");
-        if (guestExtras) guestExtras.classList.remove("hidden");
 
         statusMessage.textContent =
-            "Inicia sesión con tu correo y contraseña o con Google para guardar tus notas en NotesCampus.";
+            "Inicia sesión con correo y contraseña o con Google para guardar y consultar tus notas.";
 
         authHeaderAction.innerHTML = "";
 
@@ -199,13 +225,15 @@ document.addEventListener("DOMContentLoaded", () => {
             </form>
 
             <form id="local-register-form" class="auth-form hidden">
-                <div class="form-group">
-                    <label for="register-name">Nombre</label>
-                    <input type="text" id="register-name" required autocomplete="name" placeholder="Tu nombre">
-                </div>
-                <div class="form-group">
-                    <label for="register-email">Correo</label>
-                    <input type="email" id="register-email" required autocomplete="email" placeholder="tu@correo.com">
+                <div class="auth-form-row">
+                    <div class="form-group">
+                        <label for="register-name">Nombre</label>
+                        <input type="text" id="register-name" required autocomplete="name" placeholder="Tu nombre">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Correo</label>
+                        <input type="email" id="register-email" required autocomplete="email" placeholder="tu@correo.com">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="register-password">Contraseña</label>
@@ -217,14 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 </button>
             </form>
 
-            <div class="divider auth-divider">
-                <span>o con Google</span>
-            </div>
-
-            <a href="/api/auth/login" class="btn btn-secondary btn-lg btn-block">
-                <i class="fa-brands fa-google"></i>
-                Continuar con Google
-            </a>
         `;
 
         bindGuestAuthForms();
@@ -328,8 +348,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function showUnregisteredUI() {
         notesSection.classList.add("hidden");
         statusNoticeSection.classList.remove("hidden");
-        if (guestExtras) guestExtras.classList.add("hidden");
-
         statusActions.innerHTML = `
             <p class="auth-card-message">Hola <strong>${escapeHTML(currentUser.nombre)}</strong>, completa tu registro en NotesCampus para empezar a guardar notas.</p>
             <button class="btn btn-accent btn-lg btn-block" id="btn-register-google" type="button">
@@ -473,14 +491,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function deleteNote(noteId, cardEl) {
-        if (cardEl) cardEl.remove();
-
         try {
             const response = await authFetch(`/api/notes/${noteId}`, { method: "DELETE" });
             if (!response.ok) {
                 await loadNotes();
                 return;
             }
+
+            if (cardEl) {
+                cardEl.remove();
+            }
+
             if (!notesGrid.querySelector(".note-card")) {
                 renderNotes([]);
             }

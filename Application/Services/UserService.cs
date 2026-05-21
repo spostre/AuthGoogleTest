@@ -22,10 +22,13 @@ public class UserService : IUserService
 
     public async Task<Usuario?> GetByEmailAsync(string email)
     {
-        var normalized = email.Trim().ToLowerInvariant();
+        var normalized = NormalizeEmail(email);
         return await _context.Usuarios
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalized);
     }
+
+    private static string NormalizeEmail(string email) =>
+        email.Trim().ToLowerInvariant();
 
     public async Task<Usuario?> GetByGoogleIdAsync(string googleId)
     {
@@ -63,7 +66,7 @@ public class UserService : IUserService
         {
             GoogleId = googleId,
             Nombre = nombre.Trim(),
-            Email = email.Trim().ToLowerInvariant()
+            Email = NormalizeEmail(email)
         };
 
         _context.Usuarios.Add(newUser);
@@ -88,7 +91,7 @@ public class UserService : IUserService
         var newUser = new Usuario
         {
             Nombre = nombre.Trim(),
-            Email = email.Trim().ToLowerInvariant(),
+            Email = NormalizeEmail(email),
             PasswordHash = _passwordHasher.Hash(password)
         };
 

@@ -39,40 +39,44 @@
                         <i class="fa-solid fa-note-sticky"></i>
                     </div>
                     <p class="guest-eyebrow">Tu espacio personal de notas</p>
-                    <h2>Bienvenido a NotesCampus</h2>
-                    <p id="status-message" class="guest-lead">Inicia sesión con tu cuenta de Google para guardar y consultar tus notas personales.</p>
-                    <ul class="guest-features" id="guest-features">
-                        <li><i class="fa-solid fa-shield-halved"></i> Correo y contraseña o Google</li>
+                    <h2>Bienvenido a <span class="accent-text">NotesCampus</span></h2>
+                    <p id="status-message" class="guest-lead">Inicia sesión con correo y contraseña o con Google para guardar y consultar tus notas.</p>
+                    <ul class="guest-features">
+                        <li><i class="fa-solid fa-shield-halved"></i> Acceso seguro con Google o correo</li>
                         <li><i class="fa-solid fa-cloud"></i> Tus notas siempre disponibles</li>
                         <li><i class="fa-solid fa-bolt"></i> Empieza en segundos</li>
                     </ul>
                 </div>
 
-                <div class="guest-auth-card">
-                    <p class="auth-card-title">Accede a tu cuenta</p>
-                    <div id="status-actions" class="status-actions"></div>
+                <div class="guest-auth-panel">
+                    <div class="guest-auth-card">
+                        <p class="auth-card-title">Accede a tu cuenta</p>
+                        <div id="status-actions" class="status-actions"></div>
 
-                    <div id="guest-extras" class="guest-extras">
-                        <div class="divider">
-                            <span>próximamente</span>
+                        <div id="guest-extras" class="guest-extras">
+                            <div class="divider auth-divider">
+                                <span>o continúa con</span>
+                            </div>
+                            <div class="oauth-grid oauth-grid-icons">
+                                <a href="/api/auth/login" class="btn btn-provider btn-provider-icon" data-provider="google" aria-label="Continuar con Google" title="Google">
+                                    <i class="fa-brands fa-google"></i>
+                                </a>
+                                <button class="btn btn-provider btn-provider-icon" type="button" data-provider="apple" aria-label="Continuar con Apple" title="Apple">
+                                    <i class="fa-brands fa-apple"></i>
+                                </button>
+                                <button class="btn btn-provider btn-provider-icon" type="button" data-provider="microsoft" aria-label="Continuar con Microsoft" title="Microsoft">
+                                    <i class="fa-brands fa-microsoft"></i>
+                                </button>
+                                <button class="btn btn-provider btn-provider-icon" type="button" data-provider="passkey" aria-label="Continuar con Passkey" title="Passkey">
+                                    <i class="fa-solid fa-key"></i>
+                                </button>
+                                <button class="btn btn-provider btn-provider-icon" type="button" data-provider="sso" aria-label="Continuar con SSO" title="SSO">
+                                    <i class="fa-solid fa-building"></i>
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="oauth-grid">
-                            <button class="btn btn-provider" type="button" data-provider="apple">
-                                <i class="fa-brands fa-apple"></i> Apple
-                            </button>
-                            <button class="btn btn-provider" type="button" data-provider="microsoft">
-                                <i class="fa-brands fa-microsoft"></i> Microsoft
-                            </button>
-                            <button class="btn btn-provider" type="button" data-provider="passkey">
-                                <i class="fa-solid fa-key"></i> Passkey
-                            </button>
-                            <button class="btn btn-provider" type="button" data-provider="sso">
-                                <i class="fa-solid fa-building"></i> SSO
-                            </button>
-                        </div>
-
-                        <p class="terms-text">
+                        <p class="terms-text guest-terms">
                             Al continuar en NotesCampus, aceptas nuestros <a href="#">Términos y condiciones</a> y la <a href="#">Política de privacidad</a>.
                         </p>
                     </div>
@@ -93,6 +97,23 @@
                 <div class="notes-grid" id="notes-grid"></div>
             </section>
         </main>
+    </div>
+
+    <div class="modal-overlay hidden" id="coming-soon-modal">
+        <div class="modal-card modal-card-sm">
+            <div class="modal-header">
+                <h3>En implementación</h3>
+                <button class="btn-close" id="btn-close-coming-soon" type="button" aria-label="Cerrar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="modal-body-text">
+                Este método de inicio de sesión aún no está disponible. Por ahora puedes entrar con <strong>Google</strong> o con tu <strong>correo y contraseña</strong>.
+            </p>
+            <div class="modal-actions modal-actions-center">
+                <button type="button" class="btn btn-primary" id="btn-coming-soon-ok">Entendido</button>
+            </div>
+        </div>
     </div>
 
     <div class="modal-overlay hidden" id="note-modal">

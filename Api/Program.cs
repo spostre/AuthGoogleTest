@@ -8,6 +8,7 @@ using Application;
 using Infrastructure;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -148,18 +149,11 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
     context.Database.EnsureCreated();
-    try
-    {
-        context.Database.ExecuteSqlRaw("""
-            ALTER TABLE "Usuarios" ADD COLUMN IF NOT EXISTS "PasswordHash" character varying(500);
-            ALTER TABLE "Usuarios" ALTER COLUMN "GoogleId" DROP NOT NULL;
-            """);
-    }
-    catch
-    {
-        // La base ya puede estar actualizada o usar otro motor.
-    }
+    await ApplyLegacySchemaPatchesAsync(context, startupLogger);
+    await NormalizeExistingUserEmailsAsync(context, startupLogger);
 }
 
 if (app.Environment.IsDevelopment())
@@ -172,9 +166,102 @@ app.UseForwardedHeaders();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.UseHttpsRedirection();
+if (HasHttpsConfigured())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static bool HasHttpsConfigured()
+{
+    var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+    if (!string.IsNullOrEmpty(urls) &&
+        urls.Contains("https://", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_HTTPS_PORTS"))
+        || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HTTPS_PORTS"));
+}
+
+static async Task ApplyLegacySchemaPatchesAsync(AppDbContext context, ILogger logger)
+{
+    await TryExecuteSqlAsync(
+        context,
+        logger,
+        """ALTER TABLE "Usuarios" ADD COLUMN IF NOT EXISTS "PasswordHash" character varying(500);""",
+        "añadir columna PasswordHash");
+
+    await TryExecuteSqlAsync(
+        context,
+        logger,
+        """ALTER TABLE "Usuarios" ALTER COLUMN "GoogleId" DROP NOT NULL;""",
+        "permitir GoogleId nulo");
+
+    await TryExecuteSqlAsync(
+        context,
+        logger,
+        """UPDATE "Usuarios" SET "Email" = LOWER(TRIM("Email"));""",
+        "normalizar correos vía SQL");
+}
+
+static async Task TryExecuteSqlAsync(
+    AppDbContext context,
+    ILogger logger,
+    string sql,
+    string description)
+{
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync(sql);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(
+            ex,
+            "No se pudo aplicar la migración SQL ({Description}). Se intentará normalización alternativa si aplica.",
+            description);
+    }
+}
+
+static async Task NormalizeExistingUserEmailsAsync(AppDbContext context, ILogger logger)
+{
+    var users = await context.Usuarios.ToListAsync();
+    var updated = 0;
+
+    foreach (var user in users)
+    {
+        var normalized = user.Email.Trim().ToLowerInvariant();
+        if (user.Email == normalized)
+        {
+            continue;
+        }
+
+        user.Email = normalized;
+        updated++;
+    }
+
+    if (updated == 0)
+    {
+        return;
+    }
+
+    try
+    {
+        await context.SaveChangesAsync();
+        logger.LogInformation("Se normalizaron {Count} correos de usuario a minúsculas.", updated);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(
+            ex,
+            "No se pudieron guardar los correos normalizados. Revisa duplicados por mayúsculas/minúsculas en la tabla Usuarios.");
+        throw;
+    }
+}
