@@ -2,72 +2,129 @@ using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
-namespace Api.Controllers
+namespace Api.Controllers;
+
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class NotesController : ControllerBase
 {
-    [Authorize]
-    [ApiController]
-    [Route("api/[controller]")]
-    public class NotesController : ControllerBase
+    private readonly INoteService _noteService;
+    private readonly IUserService _userService;
+
+    public NotesController(INoteService noteService, IUserService userService)
     {
-        private readonly INoteService _noteService;
+        _noteService = noteService;
+        _userService = userService;
+    }
 
-        public NotesController(INoteService noteService)
+    [HttpGet]
+    public async Task<IActionResult> GetNotes()
+    {
+        var userId = await ResolveCurrentUserIdAsync();
+        if (userId == null)
         {
-            _noteService = noteService;
+            return Unauthorized("Debes completar tu registro para ver tus notas.");
         }
 
-        [HttpGet("{googleId}")]
-        public async Task<IActionResult> GetNotes(string googleId)
+        try
         {
-            var authenticatedGoogleId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (authenticatedGoogleId != googleId)
-            {
-                return Forbid("No tienes permiso para ver las notas de otro usuario.");
-            }
-
-            try
-            {
-                var notes = await _noteService.GetNotesByGoogleIdAsync(googleId);
-                return Ok(notes);
-            }
-            catch (System.UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
+            var notes = await _noteService.GetNotesByUserIdAsync(userId.Value);
+            return Ok(notes);
         }
-
-        [HttpPost]
-        public async Task<IActionResult> CreateNote([FromBody] CreateNoteRequest request)
+        catch (UnauthorizedAccessException ex)
         {
-            if (string.IsNullOrEmpty(request.GoogleId) || string.IsNullOrEmpty(request.Titulo) || string.IsNullOrEmpty(request.Contenido))
-            {
-                return BadRequest("Todos los campos (GoogleId, Titulo, Contenido) son requeridos.");
-            }
-
-            var authenticatedGoogleId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (authenticatedGoogleId != request.GoogleId)
-            {
-                return Forbid("No tienes permiso para crear notas a nombre de otro usuario.");
-            }
-
-            try
-            {
-                var nota = await _noteService.CreateNoteAsync(request.GoogleId, request.Titulo, request.Contenido);
-                return Ok(nota);
-            }
-            catch (System.UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
+            return Unauthorized(ex.Message);
         }
     }
 
-    public class CreateNoteRequest
+    [HttpPost]
+    public async Task<IActionResult> CreateNote([FromBody] CreateNoteRequest request)
     {
-        public string GoogleId { get; set; } = string.Empty;
-        public string Titulo { get; set; } = string.Empty;
-        public string Contenido { get; set; } = string.Empty;
+        if (string.IsNullOrEmpty(request.Titulo) || string.IsNullOrEmpty(request.Contenido))
+        {
+            return BadRequest("Titulo y Contenido son requeridos.");
+        }
+
+        var userId = await ResolveCurrentUserIdAsync();
+        if (userId == null)
+        {
+            return Unauthorized("Debes completar tu registro para crear notas.");
+        }
+
+        try
+        {
+            var nota = await _noteService.CreateNoteAsync(userId.Value, request.Titulo, request.Contenido);
+            return Ok(nota);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
     }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> UpdateNote(int id, [FromBody] UpdateNoteRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Titulo) || string.IsNullOrEmpty(request.Contenido))
+        {
+            return BadRequest("Titulo y Contenido son requeridos.");
+        }
+
+        var userId = await ResolveCurrentUserIdAsync();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
+        var nota = await _noteService.UpdateNoteAsync(id, userId.Value, request.Titulo, request.Contenido);
+        if (nota == null)
+        {
+            return NotFound("La nota no existe o no te pertenece.");
+        }
+
+        return Ok(nota);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteNote(int id)
+    {
+        var userId = await ResolveCurrentUserIdAsync();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
+        var deleted = await _noteService.DeleteNoteAsync(id, userId.Value);
+        if (!deleted)
+        {
+            return NotFound("La nota no existe o no te pertenece.");
+        }
+
+        return Ok(new { deleted = true });
+    }
+
+    private async Task<int?> ResolveCurrentUserIdAsync()
+    {
+        var subject = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(subject))
+        {
+            return null;
+        }
+
+        return await _userService.ResolveUserIdFromSubjectAsync(subject);
+    }
+}
+
+public class CreateNoteRequest
+{
+    public string Titulo { get; set; } = string.Empty;
+    public string Contenido { get; set; } = string.Empty;
+}
+
+public class UpdateNoteRequest
+{
+    public string Titulo { get; set; } = string.Empty;
+    public string Contenido { get; set; } = string.Empty;
 }

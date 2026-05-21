@@ -7,7 +7,8 @@ public class Usuario
     public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string GoogleId { get; set; } = string.Empty;
+    public string? GoogleId { get; set; }
+    public string? PasswordHash { get; set; }
 
     public ICollection<Nota> Notas { get; set; } = new List<Nota>();
 }

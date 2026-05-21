@@ -2,120 +2,120 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Notes - Auth Práctica</title>
-    <!-- Google Fonts -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>NotesCampus</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome para iconos premium -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Elementos decorativos de fondo -->
     <div class="bg-glow circle-1"></div>
     <div class="bg-glow circle-2"></div>
 
     <div class="app-container">
-        <header>
-
+        <header class="app-header">
             <div class="logo">
-                
-                <span class="logo-text">Google<span class="accent-text">Notes</span></span>
-            
+                <i class="fa-brands fa-google brand-logo"></i>
+                <span class="logo-text">Notes<span class="accent-text">Campus</span></span>
             </div>
-            
             <div id="auth-header-action"></div>
         </header>
 
-        <main>
-
-        <!-- Contenido Principal -->
-        <main>
-            <!-- Tarjeta de Información de Usuario (se muestra al iniciar sesión) -->
+        <main class="app-main">
             <section id="user-info-section" class="user-card hidden">
                 <div class="user-avatar" id="user-avatar">U</div>
                 <div class="user-details">
-                    <h3 id="user-name">Usuario Invitado</h3>
-                    <p id="user-email">invitado@email.com</p>
+                    <span class="user-badge" id="user-badge"><i class="fa-solid fa-user"></i> Cuenta</span>
+                    <h3 id="user-name">Usuario</h3>
+                    <p id="user-email">correo@gmail.com</p>
                 </div>
             </section>
 
-            <!-- Aviso de Estado / Registro Requerido -->
-            <section id="status-notice-section" class="notice-card">
-    <div class="notice-icon">
-        <i class="fa-solid fa-lock"></i>
-    </div>
-    <h2>Acceso Restringido</h2>
-    <p id="status-message">Inicia sesión con Google para acceder a tus notas. Si es tu primera vez, podrás registrarte después de autenticarte.</p>
-    
-    <div id="status-actions" class="mt-4">
-        </div>
+            <section id="status-notice-section" class="guest-layout">
+                <div class="guest-hero">
+                    <div class="guest-hero-icon">
+                        <i class="fa-solid fa-note-sticky"></i>
+                    </div>
+                    <p class="guest-eyebrow">Tu espacio personal de notas</p>
+                    <h2>Bienvenido a NotesCampus</h2>
+                    <p id="status-message" class="guest-lead">Inicia sesión con tu cuenta de Google para guardar y consultar tus notas personales.</p>
+                    <ul class="guest-features" id="guest-features">
+                        <li><i class="fa-solid fa-shield-halved"></i> Correo y contraseña o Google</li>
+                        <li><i class="fa-solid fa-cloud"></i> Tus notas siempre disponibles</li>
+                        <li><i class="fa-solid fa-bolt"></i> Empieza en segundos</li>
+                    </ul>
+                </div>
 
-    <div class="divider">
-        <span>o continúa con</span>
-    </div>
+                <div class="guest-auth-card">
+                    <p class="auth-card-title">Accede a tu cuenta</p>
+                    <div id="status-actions" class="status-actions"></div>
 
-    <div class="oauth-grid">
-        <button class="btn btn-provider">
-            <i class="fa-brands fa-apple"></i> Apple
-        </button>
-        <button class="btn btn-provider">
-            <i class="fa-brands fa-microsoft"></i> Microsoft
-        </button>
-        <button class="btn btn-provider">
-            <i class="fa-solid fa-key"></i> Passkey
-        </button>
-        <button class="btn btn-provider">
-            <i class="fa-solid fa-building"></i> SSO
-        </button>
-    </div>
+                    <div id="guest-extras" class="guest-extras">
+                        <div class="divider">
+                            <span>próximamente</span>
+                        </div>
 
-    <p class="terms-text">
-        Al continuar, confirmas que entiendes y aceptas los <a href="#">Términos y condiciones</a> y la <a href="#">Política de privacidad</a>.
-    </p>
-</section>
+                        <div class="oauth-grid">
+                            <button class="btn btn-provider" type="button" data-provider="apple">
+                                <i class="fa-brands fa-apple"></i> Apple
+                            </button>
+                            <button class="btn btn-provider" type="button" data-provider="microsoft">
+                                <i class="fa-brands fa-microsoft"></i> Microsoft
+                            </button>
+                            <button class="btn btn-provider" type="button" data-provider="passkey">
+                                <i class="fa-solid fa-key"></i> Passkey
+                            </button>
+                            <button class="btn btn-provider" type="button" data-provider="sso">
+                                <i class="fa-solid fa-building"></i> SSO
+                            </button>
+                        </div>
 
-            <!-- Sección de Notas (Visible cuando el usuario está registrado) -->
+                        <p class="terms-text">
+                            Al continuar en NotesCampus, aceptas nuestros <a href="#">Términos y condiciones</a> y la <a href="#">Política de privacidad</a>.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             <section id="notes-section" class="hidden">
                 <div class="notes-header">
-                    <h2>Mis Notas</h2>
+                    <div class="notes-header-text">
+                        <h2>Mis Notas</h2>
+                        <p id="notes-welcome" class="notes-subtitle"></p>
+                    </div>
                     <button class="btn btn-accent" id="btn-show-create-modal">
-                        <i class="fa-solid fa-plus"></i> Nueva Nota
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Nueva Nota</span>
                     </button>
                 </div>
-
-                <!-- Cuadrícula de Notas -->
-                <div class="notes-grid" id="notes-grid">
-                    <!-- Las notas se inyectarán aquí dinámicamente -->
-                </div>
+                <div class="notes-grid" id="notes-grid"></div>
             </section>
         </main>
     </div>
 
-    <!-- Modal para Crear Nota -->
     <div class="modal-overlay hidden" id="note-modal">
         <div class="modal-card">
             <div class="modal-header">
-                <h3>Crear Nueva Nota</h3>
-                <button class="btn-close" id="btn-close-modal">
+                <h3 id="note-modal-title">Crear Nueva Nota</h3>
+                <button class="btn-close" id="btn-close-modal" type="button" aria-label="Cerrar">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             <form id="note-form">
                 <div class="form-group">
-                    <label for="note-title">Título de la Nota</label>
+                    <label for="note-title">Título</label>
                     <input type="text" id="note-title" placeholder="Ej. Compras de la semana" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="note-content">Contenido</label>
-                    <textarea id="note-content" rows="6" placeholder="Escribe el contenido de tu nota aquí..." required></textarea>
+                    <textarea id="note-content" rows="5" placeholder="Escribe tu nota aquí..." required></textarea>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancelar</button>
-                    <button type="submit" class="btn btn-accent">
-                        <i class="fa-solid fa-floppy-disk"></i> Guardar Nota
+                    <button type="submit" class="btn btn-accent" id="note-submit-btn">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar
                     </button>
                 </div>
             </form>

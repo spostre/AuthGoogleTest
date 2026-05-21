@@ -23,7 +23,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasKey(u => u.Id);
             entity.Property(u => u.Nombre).IsRequired().HasMaxLength(150);
             entity.Property(u => u.Email).IsRequired().HasMaxLength(150);
-            entity.Property(u => u.GoogleId).IsRequired().HasMaxLength(100);
+            entity.Property(u => u.GoogleId).HasMaxLength(100);
+            entity.Property(u => u.PasswordHash).HasMaxLength(500);
+            entity.HasIndex(u => u.Email).IsUnique();
             
             // Un usuario tiene muchas notas
             entity.HasMany(u => u.Notas)

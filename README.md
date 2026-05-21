@@ -15,6 +15,14 @@
 >
 > Si alguna credencial llego a subirse al repositorio, **regenerala de inmediato** en Google Cloud y en PostgreSQL.
 
+> [!IMPORTANT]
+> **NOMBRE EN LA PANTALLA DE GOOGLE ("Sign in to ..."):**
+> Ese texto **no se configura en el codigo**, sino en Google Cloud Console. Si aparece otro nombre (por ejemplo `n8n super test`), cambialo asi:
+> 1. [Google Cloud Console](https://console.cloud.google.com/) → tu proyecto
+> 2. **APIs & Services** → **OAuth consent screen**
+> 3. **App name** → `NotesCampus` (o el nombre que quieras mostrar)
+> 4. Guarda y vuelve a iniciar sesion en la app
+
 ## Descripcion General del Proyecto
 
 La aplicacion permite a los usuarios registrarse e iniciar sesion de forma segura utilizando sus cuentas de Google. Una vez autenticados y registrados localmente en la base de datos de PostgreSQL, los usuarios pueden crear, guardar y visualizar sus notas personales en un panel dinamico y responsivo.
@@ -67,3 +75,19 @@ Para evitar que un usuario autenticado altere los datos del cliente para leer o 
 3. Disponer de credenciales OAuth de Google configuradas en `appsettings.Development.json` (ver plantilla `appsettings.Development.example.json`).
 4. Ejecutar el comando `dotnet run` dentro de la carpeta `Api/`.
 5. Acceder en el navegador a `http://localhost:5098`.
+
+### Acceso por tunel Cloudflare (trycloudflare.com)
+
+Si expones la API con `cloudflared tunnel`, configura en `Api/appsettings.Development.json`:
+
+```json
+"App": {
+  "PublicOrigin": "https://draws-catalyst-rear-cultural.trycloudflare.com"
+}
+```
+
+En [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials** → tu cliente OAuth → **Authorized redirect URIs**, agrega:
+
+`https://draws-catalyst-rear-cultural.trycloudflare.com/signin-google`
+
+(Reemplaza el host si tu URL de tunel cambia.) Luego abre la app por esa URL, no por `localhost`.
