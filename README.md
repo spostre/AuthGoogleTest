@@ -18,46 +18,53 @@
 
 > [!IMPORTANT]
 > **NOMBRE EN LA PANTALLA DE GOOGLE ("Sign in to ..."):**
-> Ese texto **no se configura en el codigo**, sino en Google Cloud Console. Si aparece otro nombre (por ejemplo `n8n super test`), cambialo asi:
+> Ese texto **no se configura en el codigo**, sino en Google Cloud Console. Si aparece otro nombre, cambialo asi:
 > 1. [Google Cloud Console](https://console.cloud.google.com/) → tu proyecto
 > 2. **APIs & Services** → **OAuth consent screen**
-> 3. **App name** → `NotesCampus` (o el nombre que quieras mostrar)
+> 3. **App name** → `NotesCampus`
 > 4. Guarda y vuelve a iniciar sesion en la app
 
 ## Descripcion General del Proyecto
 
-La aplicacion permite a los usuarios autenticarse con Google y, a continuacion, obtener un token JWT firmado que se utiliza para autorizar peticiones a la API.
+La aplicacion permite a los usuarios autenticarse con Google o con credenciales locales, y luego usar un token JWT firmado para autorizar peticiones a la API.
 
 El flujo principal es:
-1. El usuario inicia inicio de sesion con Google.
-2. Google valida la cuenta y emite una autorizacion externa.
-3. El backend recibe ese callback temporal, genera un JWT y lo devuelve al frontend.
-4. El frontend almacena el token y lo envia en el encabezado `Authorization: Bearer <token>` en las llamadas protegidas.
+1. El usuario inicia sesion con Google o con correo y contraseña.
+2. El backend valida la autenticacion y emite un JWT.
+3. El frontend guarda el token en `localStorage`.
+4. El frontend envia el token en el encabezado `Authorization: Bearer <token>` en las llamadas protegidas.
 
-## Flujo de Autenticacion JWT
+## Flujo de Autenticacion con Google
 
 ### 1) Inicio de sesion con Google
 - Endpoint: `GET /api/auth/login`
 - La aplicacion redirige al usuario a Google usando `GoogleDefaults.AuthenticationScheme`.
-- Google responde al callback configurado en el servidor.
 
-### 2) Callback temporal de Google
+### 2) Callback de Google
 - Endpoint: `GET /api/auth/google-response`
-- El backend completa la autenticacion externa usando un cookie temporal (`AuthSchemes.External`).
-- Se extraen los claims del usuario Google: `NameIdentifier`, `Name` y `Email`.
+- El backend completa la autenticacion externa usando una cookie temporal (`AuthSchemes.External`).
+- Se extraen los claims del usuario: `NameIdentifier`, `Name` y `Email`.
 
 ### 3) Generacion del JWT
-- Se genera un token JWT con `JwtTokenService.GenerateToken(...)`.
+- Se genera un token JWT con `JwtTokenService`.
 - El token contiene:
-  - `ClaimTypes.NameIdentifier` => Google ID
-  - `ClaimTypes.Name` => Nombre completo del usuario
-  - `ClaimTypes.Email` => Correo electronico
-- El token es firmado con la clave `Jwt:Key` y valido durante 24 horas.
+  - `ClaimTypes.NameIdentifier` => ID del usuario registrado o del usuario de Google en sesion.
+  - `ClaimTypes.Name` => Nombre completo.
+  - `ClaimTypes.Email` => Correo electronico.
+  - `auth_provider` => `google` o `local`.
+  - `picture` => URL de la imagen de perfil cuando esta disponible.
+- El token se firma con `Jwt:Key` y expira a las 24 horas.
 
 ### 4) Retorno al frontend
-- El backend cierra la sesion temporal de autenticacion externa.
-- Redirige a la aplicacion cliente con el token en la URL: `/#token=<token>`.
-- El frontend debe capturar este token y usarlo en futuras peticiones.
+- El backend redirige al frontend con el token en la URL: `/#token=<token>`.
+- El frontend captura el token y lo guarda en `localStorage`.
+
+## Autenticacion Local
+
+El frontend tambien soporta autenticacion local con correo y contraseña.
+
+- `POST /api/auth/register-local` crea una cuenta local y devuelve un JWT.
+- `POST /api/auth/login-local` inicia sesion local y devuelve un JWT.
 
 ## Autenticacion y Autorizacion en el Backend
 
@@ -71,21 +78,27 @@ El flujo principal es:
   - `signature`
 
 ### Endpoints protegidos
-- `POST /api/auth/register` requiere `[Authorize]`.
-- Cualquier otro endpoint con `[Authorize]` en el backend tambien exige un JWT valido.
+- `GET /api/notes`, `POST /api/notes`, `PUT /api/notes/{id}` y `DELETE /api/notes/{id}` requieren JWT valido.
+- `POST /api/auth/register-google` tambien requiere JWT valido para completar el registro de un usuario Google.
 
 ### Validacion de identidad
-- El registro y operaciones sensibles usan el claim `ClaimTypes.NameIdentifier` extraido del JWT.
-- El backend compara siempre el Google ID autenticado con el Google ID enviado desde el cliente.
-- Si los valores no coinciden, se devuelve `403 Forbidden`.
+- El backend usa `ClaimTypes.NameIdentifier` para identificar al usuario actual.
+- Si el claim es un ID interno, se resuelve con la tabla de usuarios.
+- Si el claim es un Google ID temporal, se usa para completar el registro de Google.
 
 ## Endpoints principales
 
 - `GET /api/auth/login`: inicia el flujo de autenticacion con Google.
 - `GET /api/auth/google-response`: recibe el callback de Google y emite el JWT.
-- `GET /api/auth/current-user`: devuelve el estado de autenticacion del usuario actual.
-- `POST /api/auth/register`: registra el usuario localmente en la base de datos, requiere JWT valido.
-- `POST /api/auth/logout`: cierra sesion en el cliente, instructivo para eliminar el token local.
+- `GET /api/auth/current-user`: devuelve el estado y datos del usuario actual.
+- `POST /api/auth/register-local`: registra un usuario local con correo y contraseña.
+- `POST /api/auth/login-local`: inicia sesion local con correo y contraseña.
+- `POST /api/auth/register-google`: completa el registro de un usuario autenticado por Google.
+- `POST /api/auth/logout`: devuelve OK para indicar cierre de sesion en el cliente.
+- `GET /api/notes`: obtiene las notas del usuario autenticado.
+- `POST /api/notes`: crea una nueva nota para el usuario autenticado.
+- `PUT /api/notes/{id}`: actualiza una nota existente.
+- `DELETE /api/notes/{id}`: elimina una nota existente.
 
 ## Uso del Token JWT en el Frontend
 
@@ -109,13 +122,12 @@ Una funcion auxiliar obtiene el token de localStorage y lo prepara para ser envi
 ```javascript
 function getAuthHeaders() {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
+    return token ? { Authorization: `Bearer ${token}` } : {};
 }
 ```
 
 ### 3) Envio del token en cada peticion
-La funcion `authFetch()` es un wrapper alrededor de `fetch()` que automaticamente añade el header `Authorization`:
+La funcion `authFetch()` es un wrapper de `fetch()` que añade el header `Authorization`:
 ```javascript
 function authFetch(url, options = {}) {
     return fetch(url, {
@@ -129,43 +141,14 @@ function authFetch(url, options = {}) {
 ```
 
 ### 4) Uso en peticiones a la API
-Todos los endpoints protegidos se llaman mediante `authFetch()`:
+El frontend llama a los endpoints protegidos con `authFetch()`:
 ```javascript
-// Registrar usuario
-const response = await authFetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-        googleId: currentUser.googleId,
-        nombre: currentUser.nombre,
-        email: currentUser.email
-    })
-});
-
-// Cargar notas
-const response = await authFetch(`/api/notes/${currentUser.googleId}`);
-
-// Crear una nota
+const response = await authFetch("/api/notes");
 const response = await authFetch("/api/notes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-        googleId: currentUser.googleId,
-        titulo: titleVal,
-        contenido: contentVal
-    })
+    body: JSON.stringify({ titulo: titleVal, contenido: contentVal })
 });
-```
-
-### 5) Manejo de sesion expirada
-Si el backend responde con `401 Unauthorized`, el token ha expirado y se elimina de localStorage:
-```javascript
-const response = await authFetch("/api/auth/current-user");
-if (response.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
-    showGuestUI();
-    return;
-}
 ```
 
 ## Tecnologias y Librerias Utilizadas
@@ -200,29 +183,6 @@ El frontend reside en `/Client` y es servido directamente por la API de .NET. Es
 
 ## Requisitos para Ejecutar Localmente
 
-<<<<<<< HEAD
-1. Tener instalado .NET 10 SDK.
-2. Contar con un servidor local de PostgreSQL activo y configurar la cadena de conexion en `appsettings.Development.json`.
-3. Disponer de credenciales OAuth de Google configuradas en `appsettings.Development.json` (ver plantilla `appsettings.Development.example.json`).
-4. Ejecutar el comando `dotnet run` dentro de la carpeta `Api/`.
-5. Acceder en el navegador a `http://localhost:5098`.
-
-### Acceso por tunel Cloudflare (trycloudflare.com)
-
-Si expones la API con `cloudflared tunnel`, configura en `Api/appsettings.Development.json`:
-
-```json
-"App": {
-  "PublicOrigin": "https://draws-catalyst-rear-cultural.trycloudflare.com"
-}
-```
-
-En [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials** → tu cliente OAuth → **Authorized redirect URIs**, agrega:
-
-`https://draws-catalyst-rear-cultural.trycloudflare.com/signin-google`
-
-(Reemplaza el host si tu URL de tunel cambia.) Luego abre la app por esa URL, no por `localhost`.
-=======
 1. Instalar .NET 10 SDK.
 2. Tener PostgreSQL corriendo localmente.
 3. Copiar `Api/appsettings.Development.example.json` a `Api/appsettings.Development.json`.
@@ -235,4 +195,4 @@ En [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Servic
    - `ConnectionStrings:DefaultConnection`
 5. Ejecutar `dotnet run` desde la carpeta `Api`.
 6. Abrir `http://localhost:5098` en el navegador.
->>>>>>> b700a0b621ad0644e2886f6c5047da3136eaad77
+
