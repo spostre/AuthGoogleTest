@@ -48,7 +48,11 @@ public class UserService : IUserService
         return byGoogle?.Id;
     }
 
-    public async Task<Usuario> RegisterWithGoogleAsync(string googleId, string nombre, string email)
+    public async Task<Usuario> RegisterWithGoogleAsync(
+        string googleId,
+        string nombre,
+        string email,
+        string? pictureUrl = null)
     {
         var existingUser = await GetByGoogleIdAsync(googleId);
         if (existingUser != null)
@@ -66,7 +70,8 @@ public class UserService : IUserService
         {
             GoogleId = googleId,
             Nombre = nombre.Trim(),
-            Email = NormalizeEmail(email)
+            Email = NormalizeEmail(email),
+            PictureUrl = NormalizePictureUrl(pictureUrl)
         };
 
         _context.Usuarios.Add(newUser);
@@ -110,5 +115,146 @@ public class UserService : IUserService
         }
 
         return _passwordHasher.Verify(user.PasswordHash, password) ? user : null;
+    }
+
+    public async Task UpdatePasswordAsync(int userId, string newPassword, string? currentPassword = null)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+        {
+            throw new ArgumentException("La contraseña debe tener al menos 6 caracteres.");
+        }
+
+        var user = await GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Usuario no encontrado.");
+
+        if (!string.IsNullOrEmpty(user.PasswordHash))
+        {
+            if (string.IsNullOrWhiteSpace(currentPassword))
+            {
+                throw new ArgumentException("La contraseña actual es requerida.");
+            }
+
+            if (!_passwordHasher.Verify(user.PasswordHash, currentPassword))
+            {
+                throw new UnauthorizedAccessException("La contraseña actual no es correcta.");
+            }
+        }
+
+        user.PasswordHash = _passwordHasher.Hash(newPassword);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<Usuario> EnsureGoogleIdLinkedAsync(int userId, string googleId)
+    {
+        if (string.IsNullOrWhiteSpace(googleId))
+        {
+            throw new ArgumentException("El identificador de Google es requerido.");
+        }
+
+        var user = await GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Usuario no encontrado.");
+
+        if (!string.IsNullOrEmpty(user.GoogleId))
+        {
+            return user;
+        }
+
+        var other = await GetByGoogleIdAsync(googleId);
+        if (other != null && other.Id != userId)
+        {
+            throw new InvalidOperationException(
+                "Ese identificador de Google ya está vinculado a otra cuenta.");
+        }
+
+        user.GoogleId = googleId.Trim();
+        await _context.SaveChangesAsync();
+        return user;
+    }
+
+    public async Task<Usuario> LinkGoogleAccountAsync(
+        int userId,
+        string googleId,
+        string googleEmail,
+        string? pictureUrl = null)
+    {
+        var user = await GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Usuario no encontrado.");
+
+        if (!string.IsNullOrEmpty(user.GoogleId))
+        {
+            if (user.GoogleId == googleId.Trim())
+            {
+                return user;
+            }
+
+            throw new InvalidOperationException("Tu cuenta ya tiene Google vinculado.");
+        }
+
+        if (NormalizeEmail(user.Email) != NormalizeEmail(googleEmail))
+        {
+            throw new InvalidOperationException(
+                "El correo de Google debe ser el mismo que el de tu cuenta.");
+        }
+
+        user = await EnsureGoogleIdLinkedAsync(userId, googleId);
+        return await ApplyGooglePictureIfEmptyAsync(userId, pictureUrl);
+    }
+
+    public async Task<Usuario?> ResolveGoogleUserAsync(string googleId, string email)
+    {
+        var byGoogle = await GetByGoogleIdAsync(googleId);
+        if (byGoogle != null)
+        {
+            return byGoogle;
+        }
+
+        var byEmail = await GetByEmailAsync(email);
+        if (byEmail == null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(byEmail.GoogleId))
+        {
+            return await EnsureGoogleIdLinkedAsync(byEmail.Id, googleId);
+        }
+
+        return byEmail.GoogleId == googleId ? byEmail : null;
+    }
+
+    public async Task<Usuario> UpdatePictureUrlAsync(int userId, string? pictureUrl)
+    {
+        var user = await GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Usuario no encontrado.");
+
+        user.PictureUrl = NormalizePictureUrl(pictureUrl);
+        await _context.SaveChangesAsync();
+        return user;
+    }
+
+    public async Task<Usuario> ApplyGooglePictureIfEmptyAsync(int userId, string? pictureUrl)
+    {
+        var user = await GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("Usuario no encontrado.");
+
+        if (string.IsNullOrWhiteSpace(pictureUrl) || !string.IsNullOrEmpty(user.PictureUrl))
+        {
+            return user;
+        }
+
+        user.PictureUrl = NormalizePictureUrl(pictureUrl);
+        await _context.SaveChangesAsync();
+        return user;
+    }
+
+    private static string? NormalizePictureUrl(string? pictureUrl)
+    {
+        if (string.IsNullOrWhiteSpace(pictureUrl))
+        {
+            return null;
+        }
+
+        var trimmed = pictureUrl.Trim();
+        return trimmed.Length <= 500 ? trimmed : trimmed[..500];
     }
 }

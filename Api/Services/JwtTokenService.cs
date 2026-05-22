@@ -15,7 +15,7 @@ public class JwtTokenService
         _configuration = configuration;
     }
 
-    public string GenerateForUser(Usuario user, string? pictureUrl = null, string authProvider = "local")
+    public string GenerateForUser(Usuario user, string? pictureUrlOverride = null, string authProvider = "local")
     {
         var claims = new List<Claim>
         {
@@ -30,6 +30,7 @@ public class JwtTokenService
             claims.Add(new Claim("google_id", user.GoogleId));
         }
 
+        var pictureUrl = pictureUrlOverride ?? user.PictureUrl;
         if (!string.IsNullOrEmpty(pictureUrl))
         {
             claims.Add(new Claim("picture", pictureUrl));
@@ -55,6 +56,43 @@ public class JwtTokenService
 
         return WriteToken(claims);
     }
+
+    public int? TryGetUserIdFromToken(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var principal = handler.ValidateToken(
+                token,
+                BuildValidationParameters(),
+                out _);
+
+            var subject = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            return int.TryParse(subject, out var userId) ? userId : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private TokenValidationParameters BuildValidationParameters() =>
+        new()
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = _configuration["Jwt:Issuer"],
+            ValidAudience = _configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!))
+        };
 
     private string WriteToken(IEnumerable<Claim> claims)
     {

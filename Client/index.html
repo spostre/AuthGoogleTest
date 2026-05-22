@@ -116,6 +116,94 @@
         </div>
     </div>
 
+    <div class="modal-overlay hidden" id="settings-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Configuración de cuenta</h3>
+                <button class="btn-close" id="btn-close-settings" type="button" aria-label="Cerrar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <section class="settings-section">
+                <h4 class="settings-section-title">Foto de perfil</h4>
+                <div class="profile-picture-editor">
+                    <div class="profile-picture-preview" id="settings-avatar-preview">U</div>
+                    <div class="profile-picture-fields">
+                        <form id="profile-picture-url-form">
+                            <div class="form-group">
+                                <label for="settings-picture-url">URL de imagen</label>
+                                <input type="url" id="settings-picture-url" placeholder="https://ejemplo.com/foto.jpg" autocomplete="off">
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-block" id="btn-save-picture-url">
+                                <i class="fa-solid fa-link"></i> Guardar desde URL
+                            </button>
+                        </form>
+                        <div class="divider auth-divider"><span>o</span></div>
+                        <form id="profile-picture-file-form">
+                            <div class="form-group">
+                                <label for="settings-picture-file">Subir archivo</label>
+                                <input type="file" id="settings-picture-file" accept="image/jpeg,image/png,image/webp,image/gif">
+                            </div>
+                            <button type="submit" class="btn btn-accent btn-block" id="btn-save-picture-file">
+                                <i class="fa-solid fa-upload"></i> Subir imagen
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-danger btn-block btn-sm-profile-remove" id="btn-remove-picture">
+                            <i class="fa-solid fa-trash"></i> Quitar foto
+                        </button>
+                        <p class="auth-form-error hidden" id="settings-picture-error"></p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h4 class="settings-section-title">Métodos de acceso</h4>
+                <ul class="access-methods" id="access-methods-list">
+                    <li id="access-google-row">
+                        <span class="access-method-icon"><i class="fa-brands fa-google"></i></span>
+                        <span class="access-method-label">Google</span>
+                        <span class="access-method-status" id="access-google-status">—</span>
+                    </li>
+                    <li id="access-password-row">
+                        <span class="access-method-icon"><i class="fa-solid fa-key"></i></span>
+                        <span class="access-method-label">Correo y contraseña</span>
+                        <span class="access-method-status" id="access-password-status">—</span>
+                    </li>
+                </ul>
+                <button type="button" class="btn btn-secondary btn-link-google hidden" id="btn-link-google">
+                    <i class="fa-brands fa-google"></i> Vincular cuenta de Google
+                </button>
+                <p class="settings-hint" id="access-hint"></p>
+            </section>
+
+            <section class="settings-section">
+                <h4 class="settings-section-title" id="password-section-title">Contraseña</h4>
+                <form id="password-form">
+                    <div class="form-group hidden" id="current-password-group">
+                        <label for="settings-current-password">Contraseña actual</label>
+                        <input type="password" id="settings-current-password" autocomplete="current-password" placeholder="••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label for="settings-new-password" id="settings-new-password-label">Nueva contraseña</label>
+                        <input type="password" id="settings-new-password" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <div class="form-group">
+                        <label for="settings-confirm-password">Confirmar contraseña</label>
+                        <input type="password" id="settings-confirm-password" required minlength="6" autocomplete="new-password" placeholder="Repite la contraseña">
+                    </div>
+                    <p class="auth-form-error hidden" id="settings-password-error"></p>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-settings">Cancelar</button>
+                        <button type="submit" class="btn btn-accent" id="btn-save-password">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar contraseña
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+
     <div class="modal-overlay hidden" id="note-modal">
         <div class="modal-card">
             <div class="modal-header">

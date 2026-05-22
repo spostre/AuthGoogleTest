@@ -13,3 +13,7 @@ obj/
 # Local configurations / secrets
 appsettings.local.json
 appsettings.Development.json
+
+# Uploaded profile pictures (runtime data, not source)
+Api/App_Data/
+Client/avatars/

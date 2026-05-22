@@ -25,6 +25,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(u => u.Email).IsRequired().HasMaxLength(150);
             entity.Property(u => u.GoogleId).HasMaxLength(100);
             entity.Property(u => u.PasswordHash).HasMaxLength(500);
+            entity.Property(u => u.PictureUrl).HasMaxLength(500);
             entity.HasIndex(u => u.Email).IsUnique();
             
             // Un usuario tiene muchas notas

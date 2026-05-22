@@ -59,6 +59,10 @@ El flujo principal es:
 - El backend redirige al frontend con el token en la URL: `/#token=<token>`.
 - El frontend captura el token y lo guarda en `localStorage`.
 
+## Fotos de perfil subidas
+
+Las imagenes que el usuario sube desde Configuracion se guardan en `Api/App_Data/avatars/` (datos locales de ejecucion). Esa carpeta esta en `.gitignore` y **no debe subirse al repositorio**. Las URLs publicas siguen siendo `/avatars/{userId}.ext`.
+
 ## Autenticacion Local
 
 El frontend tambien soporta autenticacion local con correo y contraseña.

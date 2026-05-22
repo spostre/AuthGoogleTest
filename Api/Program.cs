@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 
 var clientPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "Client"));
@@ -182,8 +183,17 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+var avatarsPath = AvatarStorage.GetDirectory(app.Environment.ContentRootPath);
+AvatarStorage.EnsureDirectoryExists(app.Environment.ContentRootPath);
+AvatarStorage.MigrateLegacyClientAvatarsIfPresent(clientPath, app.Environment.ContentRootPath);
+
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    RequestPath = AvatarStorage.PublicUrlPrefix,
+    FileProvider = new PhysicalFileProvider(avatarsPath)
+});
 
 if (HasHttpsConfigured())
 {
@@ -228,6 +238,12 @@ static async Task ApplyLegacySchemaPatchesAsync(AppDbContext context, ILogger lo
         logger,
         """UPDATE "Usuarios" SET "Email" = LOWER(TRIM("Email"));""",
         "normalizar correos vía SQL");
+
+    await TryExecuteSqlAsync(
+        context,
+        logger,
+        """ALTER TABLE "Usuarios" ADD COLUMN IF NOT EXISTS "PictureUrl" character varying(500);""",
+        "añadir columna PictureUrl");
 }
 
 static async Task TryExecuteSqlAsync(

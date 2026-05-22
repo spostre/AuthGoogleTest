@@ -9,6 +9,7 @@ public class Usuario
     public string Email { get; set; } = string.Empty;
     public string? GoogleId { get; set; }
     public string? PasswordHash { get; set; }
+    public string? PictureUrl { get; set; }
 
     public ICollection<Nota> Notas { get; set; } = new List<Nota>();
 }

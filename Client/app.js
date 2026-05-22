@@ -32,10 +32,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnCloseComingSoon = document.getElementById("btn-close-coming-soon");
     const btnComingSoonOk = document.getElementById("btn-coming-soon-ok");
 
+    const settingsModal = document.getElementById("settings-modal");
+    const btnCloseSettings = document.getElementById("btn-close-settings");
+    const btnCancelSettings = document.getElementById("btn-cancel-settings");
+    const passwordForm = document.getElementById("password-form");
+    const currentPasswordGroup = document.getElementById("current-password-group");
+    const settingsPasswordError = document.getElementById("settings-password-error");
+    const settingsAvatarPreview = document.getElementById("settings-avatar-preview");
+    const settingsPictureError = document.getElementById("settings-picture-error");
+    const profilePictureUrlForm = document.getElementById("profile-picture-url-form");
+    const profilePictureFileForm = document.getElementById("profile-picture-file-form");
+    const btnRemovePicture = document.getElementById("btn-remove-picture");
+
     captureTokenFromUrl();
+    handleAuthErrorsFromUrl();
     checkSession();
     bindProviderButtons();
     bindComingSoonModal();
+    bindSettingsModal();
 
     function showComingSoonModal() {
         comingSoonModal?.classList.remove("hidden");
@@ -68,10 +82,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function captureTokenFromUrl() {
         const hash = window.location.hash;
-        if (hash.startsWith("#token=")) {
-            localStorage.setItem(TOKEN_KEY, hash.substring(7));
-            window.history.replaceState(null, "", window.location.pathname);
+        if (!hash || hash.length < 2) {
+            return;
         }
+
+        const params = new URLSearchParams(hash.slice(1));
+        const token = params.get("token");
+        if (!token) {
+            return;
+        }
+
+        localStorage.setItem(TOKEN_KEY, token);
+        if (params.get("linked") === "google") {
+            window.__authSuccessMessage =
+                "Google vinculado. Ya puedes iniciar sesión con Google o con tu contraseña.";
+        }
+
+        window.history.replaceState(null, "", window.location.pathname);
+    }
+
+    function handleAuthErrorsFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const error = params.get("error");
+        if (!error) {
+            return;
+        }
+
+        const messages = {
+            email_already_registered:
+                "Ese correo ya tiene cuenta con contraseña. Inicia sesión con correo y contraseña o vincula Google desde Configuración.",
+            google_link_failed:
+                "No se pudo vincular Google. Usa la misma cuenta de Google que tu correo registrado.",
+            google_already_linked: "Tu cuenta ya tiene Google vinculado.",
+            link_requires_login:
+                "Inicia sesión con tu correo y contraseña para vincular Google.",
+            no_email: "Google no devolvió un correo. No se pudo crear la cuenta.",
+            auth_failed: "No se pudo completar el inicio de sesión con Google.",
+            no_google_id: "No se recibió el identificador de Google."
+        };
+
+        if (messages[error]) {
+            window.__authErrorMessage = messages[error];
+        }
+
+        window.history.replaceState(null, "", window.location.pathname);
     }
 
     function saveToken(token) {
@@ -121,8 +175,21 @@ document.addEventListener("DOMContentLoaded", () => {
         return user?.authProvider || user?.AuthProvider || "local";
     }
 
-    function updateUserBadge(provider) {
-        if (provider === "google") {
+    function userHasGoogle(user) {
+        return Boolean(user?.hasGoogle || user?.googleId);
+    }
+
+    function userHasPassword(user) {
+        return Boolean(user?.hasPassword);
+    }
+
+    function updateUserBadge(user) {
+        const hasGoogle = userHasGoogle(user);
+        const hasPassword = userHasPassword(user);
+
+        if (hasGoogle && hasPassword) {
+            userBadge.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Google y correo`;
+        } else if (hasGoogle) {
             userBadge.innerHTML = `<i class="fa-brands fa-google"></i> Cuenta de Google`;
         } else {
             userBadge.innerHTML = `<i class="fa-solid fa-envelope"></i> Cuenta con correo`;
@@ -162,22 +229,28 @@ document.addEventListener("DOMContentLoaded", () => {
         userInfoSection.classList.remove("hidden");
         userName.textContent = currentUser.nombre || "Usuario";
         userEmail.textContent = currentUser.email || "";
-        updateUserBadge(getAuthProvider(currentUser));
+        updateUserBadge(currentUser);
         setUserAvatar(currentUser.nombre, getPictureUrl(currentUser));
 
         authHeaderAction.innerHTML = `
+            <button class="btn btn-secondary btn-sm" id="btn-settings" type="button" title="Configuración">
+                <i class="fa-solid fa-gear"></i>
+                <span>Configuración</span>
+            </button>
             <button class="btn btn-danger btn-sm" id="btn-logout" type="button">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span>Cerrar sesión</span>
             </button>
         `;
+        document.getElementById("btn-settings").addEventListener("click", openSettingsModal);
         document.getElementById("btn-logout").addEventListener("click", logout);
 
         if (!currentUser.isRegistered) {
-            showUnregisteredUI();
-        } else {
-            showRegisteredUI();
+            registerGoogleUser();
+            return;
         }
+
+        showRegisteredUI();
     }
 
     async function logout() {
@@ -199,7 +272,9 @@ document.addEventListener("DOMContentLoaded", () => {
         statusNoticeSection.classList.remove("hidden");
 
         statusMessage.textContent =
+            window.__authErrorMessage ||
             "Inicia sesión con correo y contraseña o con Google para guardar y consultar tus notas.";
+        delete window.__authErrorMessage;
 
         authHeaderAction.innerHTML = "";
 
@@ -345,24 +420,15 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function showUnregisteredUI() {
+    async function registerGoogleUser() {
         notesSection.classList.add("hidden");
         statusNoticeSection.classList.remove("hidden");
         statusActions.innerHTML = `
-            <p class="auth-card-message">Hola <strong>${escapeHTML(currentUser.nombre)}</strong>, completa tu registro en NotesCampus para empezar a guardar notas.</p>
-            <button class="btn btn-accent btn-lg btn-block" id="btn-register-google" type="button">
-                <i class="fa-solid fa-user-plus"></i>
-                Completar registro
-            </button>
+            <p class="auth-card-message">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Creando tu cuenta...
+            </p>
         `;
-
-        document.getElementById("btn-register-google").addEventListener("click", registerGoogleUser);
-    }
-
-    async function registerGoogleUser() {
-        const btn = document.getElementById("btn-register-google");
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Registrando...`;
 
         try {
             const response = await authFetch("/api/auth/register-google", {
@@ -381,22 +447,347 @@ document.addEventListener("DOMContentLoaded", () => {
                     saveToken(data.token);
                 }
                 await checkSession();
-            } else {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> Completar registro`;
+                return;
             }
+
+            statusActions.innerHTML = `
+                <p class="auth-card-message">${escapeHTML(data.message || "No se pudo crear la cuenta.")}</p>
+            `;
         } catch (error) {
             console.error("Error al registrar usuario:", error);
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> Completar registro`;
+            statusActions.innerHTML = `
+                <p class="auth-card-message">No se pudo conectar con el servidor.</p>
+            `;
         }
     }
 
     function showRegisteredUI() {
         statusNoticeSection.classList.add("hidden");
         notesSection.classList.remove("hidden");
-        notesWelcome.textContent = `Hola, ${currentUser.nombre}. Aquí están tus notas.`;
+        notesWelcome.textContent = window.__authSuccessMessage
+            ? window.__authSuccessMessage
+            : `Hola, ${currentUser.nombre}. Aquí están tus notas.`;
+        delete window.__authSuccessMessage;
         loadNotes();
+    }
+
+    function bindSettingsModal() {
+        btnCloseSettings?.addEventListener("click", closeSettingsModal);
+        btnCancelSettings?.addEventListener("click", closeSettingsModal);
+        settingsModal?.addEventListener("click", (e) => {
+            if (e.target === settingsModal) {
+                closeSettingsModal();
+            }
+        });
+
+        passwordForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await savePasswordFromSettings();
+        });
+
+        profilePictureUrlForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await savePictureUrlFromSettings();
+        });
+
+        profilePictureFileForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await uploadPictureFromSettings();
+        });
+
+        btnRemovePicture?.addEventListener("click", removePictureFromSettings);
+
+        document.getElementById("btn-link-google")?.addEventListener("click", linkGoogleAccount);
+    }
+
+    function linkGoogleAccount() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+            window.__authErrorMessage =
+                "Inicia sesión con tu correo y contraseña para vincular Google.";
+            showGuestUI();
+            return;
+        }
+
+        window.location.href = `/api/auth/link-google?token=${encodeURIComponent(token)}`;
+    }
+
+    function setSettingsAvatarPreview(name, pictureUrl) {
+        if (!settingsAvatarPreview) {
+            return;
+        }
+
+        settingsAvatarPreview.innerHTML = "";
+        settingsAvatarPreview.classList.remove("has-photo");
+
+        if (pictureUrl) {
+            const img = document.createElement("img");
+            img.src = pictureUrl;
+            img.alt = "Foto de perfil";
+            settingsAvatarPreview.appendChild(img);
+            settingsAvatarPreview.classList.add("has-photo");
+            return;
+        }
+
+        settingsAvatarPreview.textContent = (name || "U").charAt(0).toUpperCase();
+    }
+
+    function applyProfilePictureResponse(data) {
+        if (data.token) {
+            saveToken(data.token);
+        }
+
+        if (data.user) {
+            currentUser = { ...currentUser, ...data.user, isAuthenticated: true, isRegistered: true };
+            setUserAvatar(currentUser.nombre, getPictureUrl(currentUser));
+            updateUserBadge(currentUser);
+        }
+    }
+
+    function closeSettingsModal() {
+        settingsModal?.classList.add("hidden");
+    }
+
+    async function loadAccountSecurity() {
+        const response = await authFetch("/api/auth/account-security");
+        if (!response.ok) {
+            throw new Error("No se pudo cargar la configuración de la cuenta.");
+        }
+        return response.json();
+    }
+
+    function renderSettingsPanel(security) {
+        const googleStatus = document.getElementById("access-google-status");
+        const passwordStatus = document.getElementById("access-password-status");
+        const accessHint = document.getElementById("access-hint");
+        const btnLinkGoogle = document.getElementById("btn-link-google");
+        const passwordSectionTitle = document.getElementById("password-section-title");
+        const newPasswordLabel = document.getElementById("settings-new-password-label");
+        const saveBtn = document.getElementById("btn-save-password");
+
+        const hasGoogle = Boolean(security.hasGoogle || security.googleId);
+        const hasPassword = Boolean(security.hasPassword);
+
+        googleStatus.textContent = hasGoogle ? "Activo" : "No vinculado";
+        googleStatus.className = `access-method-status ${hasGoogle ? "is-active" : "is-inactive"}`;
+
+        passwordStatus.textContent = hasPassword ? "Activo" : "Sin configurar";
+        passwordStatus.className = `access-method-status ${hasPassword ? "is-active" : "is-inactive"}`;
+
+        if (hasGoogle && !hasPassword) {
+            accessHint.textContent =
+                `Agrega una contraseña para entrar también con ${security.email} sin usar Google.`;
+        } else if (hasPassword && hasGoogle) {
+            accessHint.textContent =
+                "Puedes iniciar sesión con Google o con tu correo y contraseña.";
+        } else if (hasPassword) {
+            accessHint.textContent =
+                "Vincula Google con el mismo correo que usaste al registrarte para entrar también con Google.";
+        } else {
+            accessHint.textContent = "";
+        }
+
+        btnLinkGoogle?.classList.toggle("hidden", hasGoogle);
+
+        currentPasswordGroup.classList.toggle("hidden", !hasPassword);
+        passwordSectionTitle.textContent = hasPassword ? "Cambiar contraseña" : "Crear contraseña";
+        newPasswordLabel.textContent = hasPassword ? "Nueva contraseña" : "Contraseña";
+        saveBtn.innerHTML = hasPassword
+            ? `<i class="fa-solid fa-floppy-disk"></i> Actualizar contraseña`
+            : `<i class="fa-solid fa-key"></i> Activar acceso con contraseña`;
+
+        setSettingsAvatarPreview(security.nombre, security.pictureUrl);
+        const pictureUrlInput = document.getElementById("settings-picture-url");
+        if (pictureUrlInput) {
+            pictureUrlInput.value = security.pictureUrl || "";
+        }
+    }
+
+    async function openSettingsModal() {
+        settingsPasswordError.classList.add("hidden");
+        settingsPictureError?.classList.add("hidden");
+        passwordForm.reset();
+        profilePictureUrlForm?.reset();
+        profilePictureFileForm?.reset();
+
+        try {
+            const security = await loadAccountSecurity();
+            renderSettingsPanel(security);
+            settingsModal?.classList.remove("hidden");
+        } catch (error) {
+            console.error(error);
+            settingsPasswordError.textContent = "No se pudo cargar la configuración.";
+            settingsPasswordError.classList.remove("hidden");
+            renderSettingsPanel(currentUser);
+            settingsModal?.classList.remove("hidden");
+        }
+    }
+
+    async function savePasswordFromSettings() {
+        settingsPasswordError.classList.add("hidden");
+        const saveBtn = document.getElementById("btn-save-password");
+        const originalHtml = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+
+        const body = {
+            newPassword: document.getElementById("settings-new-password").value,
+            confirmPassword: document.getElementById("settings-confirm-password").value
+        };
+
+        if (!currentPasswordGroup.classList.contains("hidden")) {
+            body.currentPassword = document.getElementById("settings-current-password").value;
+        }
+
+        try {
+            const response = await authFetch("/api/auth/password", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                settingsPasswordError.textContent =
+                    data.message || data.title || data.detail || "No se pudo guardar la contraseña.";
+                settingsPasswordError.classList.remove("hidden");
+                return;
+            }
+
+            if (data.token) {
+                saveToken(data.token);
+            }
+            if (data.user) {
+                currentUser = { ...currentUser, ...data.user, isAuthenticated: true, isRegistered: true };
+                setUserAvatar(currentUser.nombre, getPictureUrl(currentUser));
+                updateUserBadge(currentUser);
+            } else {
+                await checkSession();
+            }
+
+            closeSettingsModal();
+        } catch (error) {
+            console.error(error);
+            settingsPasswordError.textContent = "No se pudo conectar con el servidor.";
+            settingsPasswordError.classList.remove("hidden");
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHtml;
+        }
+    }
+
+    async function savePictureUrlFromSettings() {
+        settingsPictureError?.classList.add("hidden");
+        const url = document.getElementById("settings-picture-url")?.value?.trim();
+        if (!url) {
+            settingsPictureError.textContent = "Ingresa la URL de la imagen.";
+            settingsPictureError.classList.remove("hidden");
+            return;
+        }
+
+        const btn = document.getElementById("btn-save-picture-url");
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+
+        try {
+            const response = await authFetch("/api/auth/profile-picture", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pictureUrl: url })
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                settingsPictureError.textContent =
+                    data.message || data.title || data.detail || "No se pudo guardar la foto.";
+                settingsPictureError.classList.remove("hidden");
+                return;
+            }
+
+            applyProfilePictureResponse(data);
+            setSettingsAvatarPreview(currentUser.nombre, getPictureUrl(currentUser));
+        } catch (error) {
+            console.error(error);
+            settingsPictureError.textContent = "No se pudo conectar con el servidor.";
+            settingsPictureError.classList.remove("hidden");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+
+    async function uploadPictureFromSettings() {
+        settingsPictureError?.classList.add("hidden");
+        const file = document.getElementById("settings-picture-file")?.files?.[0];
+        if (!file) {
+            settingsPictureError.textContent = "Selecciona una imagen.";
+            settingsPictureError.classList.remove("hidden");
+            return;
+        }
+
+        const btn = document.getElementById("btn-save-picture-file");
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Subiendo...`;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const response = await authFetch("/api/auth/profile-picture/upload", {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                settingsPictureError.textContent =
+                    data.message || data.title || data.detail || "No se pudo subir la imagen.";
+                settingsPictureError.classList.remove("hidden");
+                return;
+            }
+
+            applyProfilePictureResponse(data);
+            setSettingsAvatarPreview(currentUser.nombre, getPictureUrl(currentUser));
+            profilePictureFileForm?.reset();
+        } catch (error) {
+            console.error(error);
+            settingsPictureError.textContent = "No se pudo conectar con el servidor.";
+            settingsPictureError.classList.remove("hidden");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+
+    async function removePictureFromSettings() {
+        settingsPictureError?.classList.add("hidden");
+
+        try {
+            const response = await authFetch("/api/auth/profile-picture", { method: "DELETE" });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                settingsPictureError.textContent =
+                    data.message || data.title || data.detail || "No se pudo quitar la foto.";
+                settingsPictureError.classList.remove("hidden");
+                return;
+            }
+
+            applyProfilePictureResponse(data);
+            setSettingsAvatarPreview(currentUser.nombre, null);
+            const pictureUrlInput = document.getElementById("settings-picture-url");
+            if (pictureUrlInput) {
+                pictureUrlInput.value = "";
+            }
+            profilePictureFileForm?.reset();
+        } catch (error) {
+            console.error(error);
+            settingsPictureError.textContent = "No se pudo conectar con el servidor.";
+            settingsPictureError.classList.remove("hidden");
+        }
     }
 
     async function loadNotes() {
