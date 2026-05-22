@@ -159,9 +159,28 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    app.Logger.LogInformation(
+        "Túnel Cloudflare: usa la URL que imprime cloudflared (cambia en cada ejecución). " +
+        "Google redirect: https://TU-URL.trycloudflare.com/signin-google");
 }
 
 app.UseForwardedHeaders();
+
+if (app.Environment.IsDevelopment())
+{
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Host.Host.EndsWith(
+                ".trycloudflare.com",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            context.Request.Scheme = "https";
+        }
+
+        await next();
+    });
+}
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
