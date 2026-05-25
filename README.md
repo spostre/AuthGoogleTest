@@ -200,3 +200,5 @@ El frontend reside en `/Client` y es servido directamente por la API de .NET. Es
 5. Ejecutar `dotnet run` desde la carpeta `Api`.
 6. Abrir `http://localhost:5098` en el navegador.
 
+#presentacion
+https://www.canva.com/design/DAHKTV6PkPk/OSw3GJ8bgVJWTo4Kbx60Qw/edit
